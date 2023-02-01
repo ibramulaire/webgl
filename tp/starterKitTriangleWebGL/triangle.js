@@ -1,62 +1,39 @@
+"use strict";
 
 var vertexShaderSource = `#version 300 es
+
 // an attribute is an input (in) to a vertex shader.
 // It will receive data from a buffer
+in vec4 Position;
 uniform mat4 MVP;//recuperation de la matrice mvp
 uniform mat4 MODEL;
-layout(location = 0) in vec3 position; // le location permet de dire de quel flux/canal on récupère les données (doit être en accord avec le location du code opengl)
-out vec4 color ;
-void main(){
-    color=vec4(position,1.0);
-    gl_Position= MVP* vec4(position,1.0);   
+out vec4 fragcolor;
+// all shaders have a main function
+void main() {
+
+  // gl_Position is a special variable a vertex shader
+  // is responsible for setting
+  fragcolor=Position;
+  gl_Position= MVP* Position; 
+
 }
 `;
 
 var fragmentShaderSource = `#version 300 es
+
 // fragment shaders don't have a default precision so we need
 // to pick one. highp is a good default. It means "high precision"
 precision highp float;
+
 // we need to declare an output for the fragment shader
-out vec4 finalColor;
-in vec4 color;
+out vec4 outColor;
+in vec4  fragcolor;
 void main() {
-  finalColor = color;
+  // Just set the output to a constant redish-purple
+  outColor = fragcolor;
 }
 `;
 
-function toRadian(x)
-{
-  return x*3.14/180;
-}
-var positions = [
-  0.0, 0.0, 0.0,
-  1.0, 0.0, 0.0,
-  0.0, 1.0, 0.0,
-
-  1.0, 1.0, 0.0
-];
-var indices = [
-  0, 3, 2,
-  0, 1, 3
-     
-];
-var vao;
-var ibo;
-
-var vbo ;
-
-var cameraposition=[0.,0.,3.];
-var cameraDistance=0.;
-var mouseLeftDown;
-var mouseRightDown;
-var mouseMiddleDown;
-var mouseX=0.0;
-var mouseY=0.0;
-var cameraAngleX=0.;
-var cameraAngleY=0.;
-var indexVertex=0;
-var indexUVTexture=2;
-var indexNormale=3 ;
 function createShader(gl, type, source) {
   var shader = gl.createShader(type);
   gl.shaderSource(shader, source);
@@ -87,8 +64,6 @@ function createProgram(gl, vertexShader, fragmentShader) {
 }
 
 
-
-
 function initWEBGL(gl)
 {
   gl.cullFace(gl.BACK);// on spécifie queil faut éliminer les face arriere
@@ -108,7 +83,43 @@ return program;
 
 
 
-function genereBuffer(gl) {
+
+
+function toRadian(x)
+{
+  return x*Math.PI /180;
+}
+
+var positions = [
+  0.0, 0.0, 0.0,
+  1.0, 0.0, 0.0,
+  0.0, 1.0, 0.0,
+  1.0, 1.0, 0.0
+];
+var indices = [
+  0, 3, 2
+     
+];
+
+var vao;
+var ibo;
+var vbo ;
+
+var cameraPosition=[0.,0.,3.];
+var cameraDistance=0.;
+var mouseLeftDown;
+var mouseRightDown;
+var mouseMiddleDown;
+var mouseX=0.0;
+var mouseY=0.0;
+var cameraAngleX=0.;
+var cameraAngleY=0.;
+
+
+
+
+
+function genereBuffer(gl,indexVertex) {
 
   // Créer un tampon des coordonnées des sommets pour le triangle.
   vbo = gl.createBuffer();
@@ -149,7 +160,6 @@ function deleteVBO (gl)
     
 }
 
-
 function drawScene(gl, programInfo) {
   gl.clearColor(1.0,1.0,1.0,0.0);  // effacement en noir, complètement opaque
   gl.clearDepth(1.0);                 // tout effacer
@@ -177,7 +187,7 @@ function drawScene(gl, programInfo) {
   // Définir la position de dessin comme étant le point "origine", qui est le centre de la scène.
   var View = mat4.create();
 
-  mat4.lookAt(View,cameraposition,[0,0,0],[0,1,0]);
+  mat4.lookAt(View,cameraPosition,[0,0,0],[0,1,0]);
   // translation
   var Model = mat4.create();
 
@@ -188,8 +198,8 @@ function drawScene(gl, programInfo) {
  
   var MVP= mat4.create();
  mat4.multiply(MVP,Projection,View);
- mat4.multiply(MVP,Projection,Model);
- // * ;
+ mat4.multiply(MVP,MVP,Model);
+ 
 
  
 // Indiquer à WebGL d'utiliser notre programme pour dessiner
@@ -199,14 +209,15 @@ gl.useProgram(programInfo.programID);
 gl.uniformMatrix4fv(programInfo.uniformLocations.MatrixIDMVP,false, (MVP));
 gl.uniformMatrix4fv(programInfo.uniformLocations.MatrixIDView,false,(View));
 gl.uniformMatrix4fv(programInfo.uniformLocations.MatrixIDModel,false,(Model));
-gl.uniformMatrix4fv(programInfo.uniformLocations.MatrixIDPerspective,false,new Float32Array(Projection));
+gl.uniformMatrix4fv(programInfo.uniformLocations.MatrixIDPerspective,false, (Projection));
 
-//gl.uniform3f( locCameraPosition.x, cameraPosition.y, cameraPosition.z);
+gl.uniform3f( programInfo.uniformLocations.locCameraPosition ,cameraPosition.x, cameraPosition.y, cameraPosition.z);
 
-  
-  
-    
-    gl.drawElements(gl.TRIANGLES, 2, gl.UNSIGNED_INT, 0);
+gl.bindVertexArray(vao);
+
+
+
+   gl.drawElements(gl.TRIANGLES,indices.length , gl.UNSIGNED_INT, 0);
   
 }
 
@@ -218,74 +229,68 @@ gl.uniformMatrix4fv(programInfo.uniformLocations.MatrixIDPerspective,false,new F
 
 
 
-//////////////////////////
-//         main         //
-//////////////////////////
+
+
+
+
 function main() {
- 	
-  const canvas = document.querySelector("#glcanvas");
-    
-  const gl = canvas.getContext("webgl2");
-     
+  // Get A WebGL context
+  var canvas = document.querySelector("#glcanvas");
+  var gl = canvas.getContext("webgl2");
   if (!gl) {
-      alert("Impossible d'initialiser WebGL.");
-      return;
+    return;
   }
 
+  // create GLSL shaders, upload the GLSL source, compile the shaders
   var programID=initWEBGL(gl);
-  function render() {
-    const programInfo = 
-  {
-    programID: programID,
-    attribLocations: 
+ 
+  var programInfo = 
     {
-        vertexPosition: gl.getAttribLocation(programID, 'aVertexPosition'),//création d'un pointeur pour les données de vertex
-   
+      programID: programID,
+      attribLocations: 
+      {
+          vertexPosition: gl.getAttribLocation(programID, 'Position'),//création d'un pointeur pour les données de vertex
+    
       },
+      uniformLocations:
+      { 
+        MatrixIDMVP :gl.getUniformLocation(programID, "MVP"),
+        MatrixIDView: gl.getUniformLocation(programID, "VIEW"),
+        MatrixIDModel: gl.getUniformLocation(programID, "MODEL"),
+        MatrixIDPerspective :gl.getUniformLocation(programID, "PERSPECTIVE"),
 
-    uniformLocations:
-    { 
-      MatrixIDMVP :gl.getUniformLocation(programID, "MVP"),
-      MatrixIDView: gl.getUniformLocation(programID, "VIEW"),
-      MatrixIDModel: gl.getUniformLocation(programID, "MODEL"),
-      MatrixIDPerspective :gl.getUniformLocation(programID, "PERSPECTIVE"),
+        locCameraPosition : gl.getUniformLocation(programID, "cameraPosition"),
+        locmaterialShininess :gl.getUniformLocation(programID, "materialShininess"),
+        locmaterialSpecularColor:gl.getUniformLocation(programID, "materialSpecularColor"),
+        locLightPosition :gl.getUniformLocation(programID, "light.position"),
+        locLightIntensities:gl.getUniformLocation(programID, "light.intensities"),//a.k.a the color of the light
+        locLightAttenuation:gl.getUniformLocation(programID, "light.attenuation"),
+        locLightAmbientCoefficient: gl.getUniformLocation(programID, "light.ambientCoefficient"),
+        locSilhouette:gl.getUniformLocation(programID, "silhouette"),
+        locShad:gl.getUniformLocation(programID, "shad"),
+      
+      },
+    };
+    genereBuffer(gl,programInfo.attribLocations.vertexPosition);
+    function render() {
 
-      locCameraPosition : gl.getUniformLocation(programID, "cameraPosition"),
-      locmaterialShininess :gl.getUniformLocation(programID, "materialShininess"),
-      locmaterialSpecularColor:gl.getUniformLocation(programID, "materialSpecularColor"),
-      locLightPosition :gl.getUniformLocation(programID, "light.position"),
-      locLightIntensities:gl.getUniformLocation(programID, "light.intensities"),//a.k.a the color of the light
-      locLightAttenuation:gl.getUniformLocation(programID, "light.attenuation"),
-      locLightAmbientCoefficient: gl.getUniformLocation(programID, "light.ambientCoefficient"),
-      locSilhouette:gl.getUniformLocation(programID, "silhouette"),
-      locShad:gl.getUniformLocation(programID, "shad"),
-     
-    },
-  };
-
-
-
-
-  // Appel la méthode qui construit tous les objets que nous allons dessiner
-genereBuffer(gl);
-
-  //Rendu de la scène
-  drawScene(gl, programInfo);
-    // Your code to render a frame goes here
-    requestAnimationFrame(render);
-  }
+          drawScene(gl, programInfo);
+          requestAnimationFrame(render);
+    }
   requestAnimationFrame(render);
-  
-
-  
 
   //deleteVBO (gl);
 }
 
 
+function handleKeyPressed(evenement){
+  switch(evenement.keyCode){
+    case 88:
+      if(evenement.shiftKey) 
+        rotAxeX =0.1;
+      else 
+        rotAxeX +=0.1; break;
+  default: break;}}
 
-
-
-
-
+  window.onkeydown = handleKeyPressed;
 main();
