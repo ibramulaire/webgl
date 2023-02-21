@@ -1,0 +1,32 @@
+
+
+  .container1 {
+
+    display: flex;
+	height: 70vh;
+	
+}
+.container2 {
+	display: flex;
+	align-items: center;
+	
+   
+	
+}
+img{
+
+	border: 1px solid;
+}
+
+#color{
+	width: 5%;
+	height: 100% ;
+	
+}
+
+#glcanvas{
+width: 95%;
+background-color:rgb(37, 21, 52);
+
+
+}
