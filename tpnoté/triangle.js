@@ -176,9 +176,9 @@ function deleteVBO (gl)
 
 function drawScene(gl, programInfo) 
 {
-  webglUtils.resizeCanvasToDisplaySize(gl.canvas);
+  //webglUtils.resizeCanvasToDisplaySize(gl.canvas);
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-  gl.clearColor(0.0,0.0,0.0,0.0); 
+  gl.clearColor(1.0,0.0,0.0,0.0); 
   gl.clearDepth(10.0);                 
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   

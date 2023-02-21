@@ -1,6 +1,23 @@
-canvas {
-	width: 100vw;
-	height: 100vh;
-	display: block;
-  }
-  
+
+
+  .container1 {
+
+    display: flex;
+	height: 50vh;
+}
+.container2 {
+	background-color:aqua;
+    display: flex;
+}
+#color{
+	width: 5%;
+	height: 100% ;
+	
+	background-color:aqua;
+}
+
+#glcanvas{
+width: 95%;
+
+
+}
